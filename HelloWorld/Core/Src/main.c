@@ -3,6 +3,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include <stdio.h>
+#include <stdbool.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -84,24 +85,35 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    // // Toggling
-    // HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-    // HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_6);
-    // HAL_Delay(1000);
+    // Turn on LED if button pressed
+    GPIO_PinState userButtonStatus = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
 
-    // PWM Pulse
-    int x;
-    for (x=0; x<1000; x++) 
+    if (userButtonStatus == GPIO_PIN_RESET) 
     {
-      __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, x);
-      HAL_Delay(1);
-    }
-    for (x=1000; x>0; x--) 
+      printf("Button pressed");
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 1);
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, 1);
+    } 
+    else
     {
-      __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, x);
-      HAL_Delay(1);
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0);
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, 0);
     }
-    printf("Hello World");
+
+
+    // // PWM Pulse
+    // int x;
+    // for (x=0; x<1000; x++) 
+    // {
+    //   __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, x);
+    //   HAL_Delay(1);
+    // }
+    // for (x=1000; x>0; x--) 
+    // {
+    //   __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, x);
+    //   HAL_Delay(1);
+    // }
+    // printf("Hello World");
 
     /* USER CODE END WHILE */
 
