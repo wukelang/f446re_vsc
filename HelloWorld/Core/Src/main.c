@@ -24,6 +24,7 @@ I2C_HandleTypeDef hi2c1;
 
 TIM_HandleTypeDef htim2;
 
+UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
@@ -35,11 +36,17 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+// short BUFFER_LEN = 1;
+#define BUFFER_LEN 1
+uint8_t RX_BUFFER[BUFFER_LEN] = {0};
+UART_HandleTypeDef huart1;
 /* USER CODE END 0 */
 
 /**
@@ -74,10 +81,11 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM2_Init();
   MX_I2C1_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
-  uint16_t AD_RES = 0;
-
+  HAL_UART_Receive_IT(&huart1, RX_BUFFER, BUFFER_LEN); // Enabling interrupt receive
+  // uint16_t AD_RES = 0;
 
   /* USER CODE END 2 */
 
@@ -85,16 +93,25 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    // Motor Bridge
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
+    if (RX_BUFFER[0] == '1') 
+    {
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 1);
+    }
+    else if (RX_BUFFER[0] == '0')
+    {      
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0);
+    }
 
-    HAL_Delay(1000);
+    // // Motor Bridge
+    // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
+    // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
 
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
+    // HAL_Delay(1000);
 
-    HAL_Delay(1000);
+    // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
+    // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
+
+    // HAL_Delay(1000);
 
     // // Potentiometer ADC
     // HAL_ADC_Start(&hadc1);
@@ -270,6 +287,39 @@ static void MX_TIM2_Init(void)
 }
 
 /**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 9600;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -347,6 +397,13 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if(huart->Instance == huart1.Instance)
+    {
+    HAL_UART_Receive_IT(&huart1, RX_BUFFER, BUFFER_LEN);
+    }
+}
 /* USER CODE END 4 */
 
 /**
