@@ -43,9 +43,51 @@ static void MX_USART1_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-#define BUFFER_LEN 1
+#define BUFFER_LEN 32
 uint8_t rx_buff[BUFFER_LEN];
 // uint8_t tx_buff[]; //ABCDEFGHIJ in ASCII code
+
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)
+{
+  if (huart->Instance==huart1.Instance) 
+  {
+    HAL_UARTEx_ReceiveToIdle_IT(huart, rx_buff, BUFFER_LEN);
+  }
+}
+
+void setLeftMotorState(int on, int clockwise) {
+  if (on == 0) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
+    return;
+  }
+
+  if (clockwise == 0) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
+  } 
+  else {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 1);
+  }
+}
+
+void setRightMotorState(int on, int clockwise) {
+  if (on == 0) {
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, 0);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, 0);
+    return;
+  }
+  
+  if (clockwise == 0) {
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, 1);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, 0);
+  } 
+  else {
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, 0);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, 1);
+  }
+}
 
 /* USER CODE END 0 */
 
@@ -86,27 +128,34 @@ int main(void)
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
   
   // uint16_t AD_RES = 0;
-  HAL_UART_Receive_IT(&huart1, rx_buff, BUFFER_LEN); // Enabling interrupt receive
+  HAL_UARTEx_ReceiveToIdle_IT(&huart1, rx_buff, BUFFER_LEN);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    // printf("%s", rx_buff);
-    // HAL_UART_Transmit_IT(&huart1, tx_buff, 10);
-    // HAL_UART_Receive_IT(&huart1, rx_buff, BUFFER_LEN); // Enabling interrupt receive
     HAL_UART_Transmit_IT(&huart1, rx_buff, sizeof(rx_buff));
     HAL_Delay(1000);
 
     if (rx_buff[0] == 'U')
     {
       HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 1);
+      setLeftMotorState(1, 1);
+      setRightMotorState(1, 1);
     }
     else if (rx_buff[0] == 'D')
     {      
-      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0);
+      setLeftMotorState(1, 0);
+      setRightMotorState(1, 0);
     }
+    else 
+    {
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0);
+      setLeftMotorState(0, 0);
+      setRightMotorState(0, 0);
+    }
+
 
     // // Motor Bridge
     // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
@@ -403,13 +452,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-  if(huart->Instance == huart1.Instance)
-  {
-    HAL_UART_Receive_IT(&huart1, rx_buff, BUFFER_LEN);
-  }
-}
 /* USER CODE END 4 */
 
 /**
