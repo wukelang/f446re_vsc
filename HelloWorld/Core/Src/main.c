@@ -2,7 +2,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-
+#include "stdio.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
@@ -43,10 +43,10 @@ static void MX_USART1_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-// short BUFFER_LEN = 1;
 #define BUFFER_LEN 1
-uint8_t RX_BUFFER[BUFFER_LEN] = {0};
-UART_HandleTypeDef huart1;
+uint8_t rx_buff[BUFFER_LEN];
+// uint8_t tx_buff[]; //ABCDEFGHIJ in ASCII code
+
 /* USER CODE END 0 */
 
 /**
@@ -84,20 +84,26 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
-  HAL_UART_Receive_IT(&huart1, RX_BUFFER, BUFFER_LEN); // Enabling interrupt receive
+  
   // uint16_t AD_RES = 0;
-
+  HAL_UART_Receive_IT(&huart1, rx_buff, BUFFER_LEN); // Enabling interrupt receive
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    if (RX_BUFFER[0] == '1') 
+    // printf("%s", rx_buff);
+    // HAL_UART_Transmit_IT(&huart1, tx_buff, 10);
+    // HAL_UART_Receive_IT(&huart1, rx_buff, BUFFER_LEN); // Enabling interrupt receive
+    HAL_UART_Transmit_IT(&huart1, rx_buff, sizeof(rx_buff));
+    HAL_Delay(1000);
+
+    if (rx_buff[0] == 'U')
     {
       HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 1);
     }
-    else if (RX_BUFFER[0] == '0')
+    else if (rx_buff[0] == 'D')
     {      
       HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0);
     }
@@ -306,7 +312,7 @@ static void MX_USART1_UART_Init(void)
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
-  huart1.Init.Mode = UART_MODE_RX;
+  huart1.Init.Mode = UART_MODE_TX_RX;
   huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
   huart1.Init.OverSampling = UART_OVERSAMPLING_16;
   if (HAL_UART_Init(&huart1) != HAL_OK)
@@ -399,10 +405,10 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-    if(huart->Instance == huart1.Instance)
-    {
-    HAL_UART_Receive_IT(&huart1, RX_BUFFER, BUFFER_LEN);
-    }
+  if(huart->Instance == huart1.Instance)
+  {
+    HAL_UART_Receive_IT(&huart1, rx_buff, BUFFER_LEN);
+  }
 }
 /* USER CODE END 4 */
 
