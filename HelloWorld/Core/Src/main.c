@@ -2,9 +2,10 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "stdio.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -22,7 +23,7 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
 
-TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
@@ -34,9 +35,9 @@ UART_HandleTypeDef huart2;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_TIM2_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 /* USER CODE END PFP */
 
@@ -55,12 +56,16 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size)
   }
 }
 
-void setLeftMotorState(int on, int clockwise) {
+void setLeftMotorState(int on, int clockwise, int speed) {
   if (on == 0) {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 0);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, 0);
     return;
   }
+
+  int ccr = 200 * speed;  // Speed: 0 - 10
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, ccr);
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, ccr);
 
   if (clockwise == 0) {
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
@@ -72,13 +77,17 @@ void setLeftMotorState(int on, int clockwise) {
   }
 }
 
-void setRightMotorState(int on, int clockwise) {
+void setRightMotorState(int on, int clockwise, int speed) {
   if (on == 0) {
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, 0);
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, 0);
     return;
   }
   
+  int ccr = 200 * speed;  // Speed: 0 - 10
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, ccr);
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, ccr);
+
   if (clockwise == 0) {
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_0, 1);
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, 0);
@@ -121,14 +130,15 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
-  MX_TIM2_Init();
   MX_I2C1_Init();
   MX_USART1_UART_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
-  
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);  
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
   // uint16_t AD_RES = 0;
   HAL_UARTEx_ReceiveToIdle_IT(&huart1, rx_buff, BUFFER_LEN);
+  int receivedSpeed = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -138,23 +148,29 @@ int main(void)
     HAL_UART_Transmit_IT(&huart1, rx_buff, sizeof(rx_buff));
     HAL_Delay(1000);
 
+    // receivedSpeed = getSpeedFromUartBuff(rx_buff);
+    receivedSpeed =  rx_buff[1] - '0';  // Convert number char to int
+    if (receivedSpeed < 0 && receivedSpeed > 10) {
+      receivedSpeed = 0;
+    }
+
     if (rx_buff[0] == 'U')
     {
-      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 1);
-      setLeftMotorState(1, 1);
-      setRightMotorState(1, 1);
+      setLeftMotorState(1, 1, receivedSpeed);
+      setRightMotorState(1, 1, receivedSpeed);
     }
     else if (rx_buff[0] == 'D')
     {      
-      setLeftMotorState(1, 0);
-      setRightMotorState(1, 0);
+      setLeftMotorState(1, 0, receivedSpeed);
+      setRightMotorState(1, 0, receivedSpeed);
     }
     else 
     {
       HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0);
-      setLeftMotorState(0, 0);
-      setRightMotorState(0, 0);
+      setLeftMotorState(0, 0, receivedSpeed);
+      setRightMotorState(0, 0, receivedSpeed);
     }
+
 
 
     // // Motor Bridge
@@ -300,44 +316,65 @@ static void MX_I2C1_Init(void)
 }
 
 /**
-  * @brief TIM2 Initialization Function
+  * @brief TIM3 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_TIM2_Init(void)
+static void MX_TIM3_Init(void)
 {
 
-  /* USER CODE BEGIN TIM2_Init 0 */
-  /* USER CODE END TIM2_Init 0 */
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
 
-  /* USER CODE BEGIN TIM2_Init 1 */
-  /* USER CODE END TIM2_Init 1 */
-  htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 127;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 20;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
-  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 90 - 1;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 2000 - 1;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
   {
     Error_Handler();
   }
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
   {
     Error_Handler();
   }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN TIM2_Init 2 */
-  /* USER CODE END TIM2_Init 2 */
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+  HAL_TIM_MspPostInit(&htim3);
 
 }
 
