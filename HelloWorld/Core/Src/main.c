@@ -6,6 +6,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "stdio.h"
+#include "stdlib.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -150,28 +151,34 @@ int main(void)
 
     // receivedSpeed = getSpeedFromUartBuff(rx_buff);
     receivedSpeed =  rx_buff[1] - '0';  // Convert number char to int
+    
     if (receivedSpeed < 0 && receivedSpeed > 10) {
       receivedSpeed = 0;
     }
 
-    if (rx_buff[0] == 'U')
+    switch (rx_buff[0])
     {
-      setLeftMotorState(1, 1, receivedSpeed);
-      setRightMotorState(1, 1, receivedSpeed);
+      case 'u':
+        setLeftMotorState(1, 0, receivedSpeed);
+        setRightMotorState(1, 0, receivedSpeed);
+        break;
+      case 'd':
+        setLeftMotorState(1, 1, receivedSpeed);
+        setRightMotorState(1, 1, receivedSpeed);
+        break;
+      case 'l':
+        setLeftMotorState(1, 1, receivedSpeed);
+        setRightMotorState(1, 0, receivedSpeed);
+        break;
+      case 'r':
+        setLeftMotorState(1, 0, receivedSpeed);
+        setRightMotorState(1, 1, receivedSpeed);
+        break;
+      default:
+        // Turn Off
+        setLeftMotorState(0, 0, receivedSpeed);
+        setRightMotorState(0, 0, receivedSpeed);
     }
-    else if (rx_buff[0] == 'D')
-    {      
-      setLeftMotorState(1, 0, receivedSpeed);
-      setRightMotorState(1, 0, receivedSpeed);
-    }
-    else 
-    {
-      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, 0);
-      setLeftMotorState(0, 0, receivedSpeed);
-      setRightMotorState(0, 0, receivedSpeed);
-    }
-
-
 
     // // Motor Bridge
     // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0, 1);
